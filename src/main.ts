@@ -4,16 +4,23 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import * as path from 'path';
 import fs from 'fs';
 
+enum PathType {
+  URL = 'url',
+  RELATIVE = 'relative',
+}
+type FilePathTypes = Record<string, PathType>;
+
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 export async function run(): Promise<void> {
   try {
-    validateInputsAndVars();
+    validateInputsAndEnv();
+    const pathTypes = await getFilePathTypes();
     await installCorelliumCli();
-    const instanceId = await setupDevice();
-    const report = await runMatrix(instanceId);
+    const instanceId = await setupDevice(pathTypes);
+    const report = await runMatrix(instanceId, pathTypes);
     await cleanup(instanceId);
     await storeReportInArtifacts(report);
   } catch (error) {
@@ -30,17 +37,17 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupDevice(): Promise<string> {
+async function setupDevice(pathTypes: FilePathTypes): Promise<string> {
   const projectId = process.env.PROJECT;
 
   core.info('Creating device...');
   const resp = await execCmd(
-    `corellium instance create ${core.getInput('flavor')} ${core.getInput('os')} ${projectId} --wait`,
+    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
   );
   const instanceId = resp?.toString().trim();
 
   core.info('Downloading app...');
-  const appPath = await downloadFile('appFile', core.getInput('appUrl'));
+  const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
 
   core.info(`Installing app on ${instanceId}...`);
   await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
@@ -48,13 +55,12 @@ async function setupDevice(): Promise<string> {
   return instanceId;
 }
 
-async function runMatrix(instanceId: string): Promise<string> {
+async function runMatrix(instanceId: string, pathTypes: FilePathTypes): Promise<string> {
   const [bundleId, wordlistId, inputInfo] = await Promise.all([
     getBundleId(instanceId),
-    uploadWordlistFile(instanceId),
-    downloadInputFile(),
+    uploadWordlistFile(instanceId, pathTypes.keywords),
+    downloadInputFile(pathTypes.userActions),
   ]);
-
   const inputsFilePath = inputInfo.inputsFilePath;
   const inputsTimeout = inputInfo.inputsTimeout;
 
@@ -113,14 +119,14 @@ async function getBundleId(instanceId: string): Promise<string> {
   return bundleId;
 }
 
-async function uploadWordlistFile(instanceId: string): Promise<string | undefined> {
-  const wordlistUrl = core.getInput('wordlistUrl');
-  if (!wordlistUrl) {
+async function uploadWordlistFile(instanceId: string, pathType: PathType): Promise<string | undefined> {
+  const keywords = core.getInput('keywords');
+  if (!keywords) {
     return;
   }
 
   core.info('Uploading wordlist...');
-  const wordlistPath = await downloadFile('wordlist.txt', wordlistUrl);
+  const wordlistPath = await downloadFile('wordlist.txt', keywords, pathType);
   const resp = await execCmd(
     `corellium image create --project ${process.env.PROJECT} --instance ${instanceId} --format json wordlist.txt mast-wordlist plain ${wordlistPath}`,
   );
@@ -130,8 +136,8 @@ async function uploadWordlistFile(instanceId: string): Promise<string | undefine
   return wordlistId;
 }
 
-async function downloadInputFile(): Promise<{ inputsFilePath: string; inputsTimeout: number }> {
-  const inputsFilePath = await downloadFile('inputs.json', core.getInput('inputUrl'));
+async function downloadInputFile(pathType: PathType): Promise<{ inputsFilePath: string; inputsTimeout: number }> {
+  const inputsFilePath = await downloadFile('inputs.json', core.getInput('userActions'), pathType);
 
   // estimating time it takes to execute device inputs - has 10s buffer
   const inputsJson = JSON.parse(fs.readFileSync(inputsFilePath, 'utf-8'));
@@ -187,7 +193,7 @@ async function storeReportInArtifacts(report: string): Promise<void> {
   core.setOutput('report', downloadPath);
 }
 
-function validateInputsAndVars(): void {
+function validateInputsAndEnv(): void {
   if (!process.env.API_TOKEN) {
     throw new Error('Environment secret missing: API_TOKEN');
   }
@@ -196,32 +202,26 @@ function validateInputsAndVars(): void {
   }
 
   // inputs from action file are not validated https://github.com/actions/runner/issues/1070
-  const requiredInputs = ['flavor', 'os', 'appUrl', 'inputUrl'];
+  const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions'];
   requiredInputs.forEach((input: string) => {
     const inputResp = core.getInput(input);
     if (!inputResp || typeof inputResp !== 'string' || inputResp === '') {
       throw new Error(`Input required and not supplied: ${input}`);
     }
   });
-
-  const urlInputs = ['appUrl', 'inputUrl', 'wordlistUrl'];
-  urlInputs.forEach((urlInput: string) => {
-    const url = core.getInput(urlInput);
-    if (url) {
-      try {
-        new URL(url);
-      } catch (_) {
-        throw new Error(`Provided URL is invalid: ${urlInput}`);
-      }
-    }
-  });
 }
 
-async function downloadFile(fileName: string, url: string): Promise<string> {
+async function downloadFile(fileNameToSave: string, pathValue: string, pathType: PathType): Promise<string> {
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
-  const downloadPath = path.join(workspaceDir, fileName);
-  await exec(`curl -L -o ${downloadPath} ${url}`, [], { silent: true });
-  return downloadPath;
+  const downloadPath = path.join(workspaceDir, fileNameToSave);
+
+  // download file from URL, otherwise already on github workspace
+  if (pathType === PathType.URL) {
+    await exec(`curl -L -o ${downloadPath} ${pathValue}`, [], { silent: true });
+    return downloadPath;
+  } else {
+    return `${workspaceDir}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`;
+  }
 }
 
 async function wait(ms = 3000): Promise<void> {
@@ -248,6 +248,37 @@ async function execCmd(cmd: string): Promise<string> {
     throw new Error(`Error occurred executing ${cmd}! err=${err}`);
   }
   return resp;
+}
+
+export async function getFilePathTypes(): Promise<FilePathTypes> {
+  // these can be either URLs or file relative to the github workspace
+  const pathInputs = ['appPath', 'userActions', 'keywords'];
+
+  const workspaceDir = process.env.GITHUB_WORKSPACE as string;
+
+  const pathInputsWithTypes: FilePathTypes = {};
+  for (const pathInput of pathInputs) {
+    const filePath = core.getInput(pathInput);
+    if (filePath) {
+      try {
+        new URL(filePath);
+        pathInputsWithTypes[pathInput] = PathType.URL;
+        continue;
+      } catch (_) {
+        if (
+          !!(await fs.promises
+            .stat(`${workspaceDir}${filePath.startsWith('/') ? filePath : `/${filePath}`}`)
+            .catch(() => false))
+        ) {
+          pathInputsWithTypes[pathInput] = PathType.RELATIVE;
+          continue;
+        }
+
+        throw new Error(`Provided file path is invalid: ${pathInput}`);
+      }
+    }
+  }
+  return pathInputsWithTypes;
 }
 
 function tryJsonParse(jsonStr: string): Record<string, unknown> | undefined {

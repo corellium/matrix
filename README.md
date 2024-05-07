@@ -43,11 +43,12 @@ jobs:
           PROJECT: ${{ secrets.CORELLIUM_PROJECT }}
           API_TOKEN: ${{ secrets.CORELLIUM_API_TOKEN }}
         with:
-          flavor: 'iphone14p'
-          os: '17.2'
+          deviceFlavor: 'iphone14p'
+          deviceOS: '17.2'
           server: 'https://app.corellium.com'
-          appUrl: 'https://www.corellium.com/hubfs/Corellium_Cafe.ipa'
-          inputUrl: 'https://www.somewebsite.com/inputs.json'
+          appPath: 'https://www.corellium.com/hubfs/Corellium_Cafe.ipa'
+          userActions: '/test/user-actions.json'
+          keywords: '/test/keywords.txt'
 
       - run: echo "${{ steps.corellium-matrix.outputs.report }}"
 
@@ -58,11 +59,11 @@ jobs:
 | Input | Description | Example | Required | Default |
 | ------ | ------ | ------ | ------ | ------ |
 | `server` | Specifies which Corellium server to use | <https://app.corellium.com> | false | <https://app.corellium.com> |
-| `flavor` | The flavor of the Instance that is being created | `iphone14p` | true | n/a |
-| `os` | The software version | `17.2` | true | n/a |
-| `appUrl` | URL to download test app | <https://www.corellium.com/hubfs/Corellium_Cafe.ipa> | true | n/a |
-| `inputUrl` | URL to download device input `.json` file. Examples can be found [here](https://app.corellium.com/api/docs#post-/v1/instances/-instanceId-/input) | <https://www.somewebsite.com/inputs.json> | true | n/a |
-| `wordlistUrl` | URL to download wordlist `.txt` file | <https://www.somewebsite.com/keywords.txt> | false | n/a |
+| `deviceFlavor` | The flavor of the Instance that is being created | `iphone14p` | true | n/a |
+| `deviceOS` | The software version | `17.2` | true | n/a |
+| `appPath` | URL to download test app or local path of the app relative to the Github workspace | <https://www.corellium.com/hubfs/Corellium_Cafe.ipa> | true | n/a |
+| `userActions` | URL to download device input `.json` file or local path of the `.json` file relative to the Github workspace. Examples can be found [here](https://app.corellium.com/api/docs#post-/v1/instances/-instanceId-/input) | `/test/user-actions.json` | true | n/a |
+| `keywords` | URL to download wordlist `.txt` file or local path of the `.txt` file relative to the Github workspace | `/test/keywords.txt` | false | n/a |
 
 ### Outputs
 

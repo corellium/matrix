@@ -4,26 +4,26 @@ author: 'Corellium, Inc. <support@corellium.com>'
 branding:
   color: 'gray-dark'
   icon: 'smartphone'
-  
+
 inputs:
   server:
     description: 'Specifies which Corellium server to use'
     required: false
     default: 'https://app.corellium.com'
-  flavor:
+  deviceFlavor:
     description: 'The flavor of the Instance that is being created'
     required: true
-  os:
+  deviceOS:
     description: 'The software version'
     required: true
-  appUrl:
-    description: 'URL to download test app'
+  appPath:
+    description: 'URL to download test app or local path of the app relative to the Github workspace'
     required: true
-  inputUrl:
-    description: 'URL to download device input JSON file'
+  userActions:
+    description: 'URL to download device input JSON file or local path of the JSON file relative to the Github workspace'
     required: true
-  wordlistUrl:
-    description: 'URL to download wordlist txt file'
+  keywords:
+    description: 'URL to download wordlist txt file or local path of the txt file relative to the Github workspace'
     required: false
 
 outputs:

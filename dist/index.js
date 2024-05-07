@@ -97860,22 +97860,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.pollAssessmentForStatus = exports.run = void 0;
+exports.getFilePathTypes = exports.pollAssessmentForStatus = exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exec_1 = __nccwpck_require__(1514);
 const artifact_1 = __nccwpck_require__(9450);
 const path = __importStar(__nccwpck_require__(1017));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
+var PathType;
+(function (PathType) {
+    PathType["URL"] = "url";
+    PathType["RELATIVE"] = "relative";
+})(PathType || (PathType = {}));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
     try {
-        validateInputsAndVars();
+        validateInputsAndEnv();
+        const pathTypes = await getFilePathTypes();
         await installCorelliumCli();
-        const instanceId = await setupDevice();
-        const report = await runMast(instanceId);
+        const instanceId = await setupDevice(pathTypes);
+        const report = await runMatrix(instanceId, pathTypes);
         await cleanup(instanceId);
         await storeReportInArtifacts(report);
     }
@@ -97892,26 +97898,26 @@ async function installCorelliumCli() {
     await (0, exec_1.exec)('npm install -g @corellium/corellium-cli');
     await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
-async function setupDevice() {
+async function setupDevice(pathTypes) {
     const projectId = process.env.PROJECT;
     core.info('Creating device...');
-    const resp = await execCmd(`corellium instance create ${core.getInput('flavor')} ${core.getInput('os')} ${projectId} --wait`);
+    const resp = await execCmd(`corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`);
     const instanceId = resp?.toString().trim();
     core.info('Downloading app...');
-    const appPath = await downloadFile('appFile', core.getInput('appUrl'));
+    const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
     core.info(`Installing app on ${instanceId}...`);
     await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
     return instanceId;
 }
-async function runMast(instanceId) {
+async function runMatrix(instanceId, pathTypes) {
     const [bundleId, wordlistId, inputInfo] = await Promise.all([
         getBundleId(instanceId),
-        uploadWordlistFile(instanceId),
-        downloadInputFile(),
+        uploadWordlistFile(instanceId, pathTypes.keywords),
+        downloadInputFile(pathTypes.userActions),
     ]);
     const inputsFilePath = inputInfo.inputsFilePath;
     const inputsTimeout = inputInfo.inputsTimeout;
-    core.info('Running MAST...');
+    core.info('Running MATRIX...');
     core.info('Creating assessment...');
     let assessmentId;
     try {
@@ -97924,7 +97930,7 @@ async function runMast(instanceId) {
         core.info(`Created assessment ${assessmentId}...`);
     }
     catch (err) {
-        throw new Error(`Error creating MAST assessment! err=${err}`);
+        throw new Error(`Error creating MATRIX assessment! err=${err}`);
     }
     await pollAssessmentForStatus(assessmentId, instanceId, 'new');
     core.info('Starting monitor...');
@@ -97958,21 +97964,21 @@ async function getBundleId(instanceId) {
     }
     return bundleId;
 }
-async function uploadWordlistFile(instanceId) {
-    const wordlistUrl = core.getInput('wordlistUrl');
-    if (!wordlistUrl) {
+async function uploadWordlistFile(instanceId, pathType) {
+    const keywords = core.getInput('keywords');
+    if (!keywords) {
         return;
     }
     core.info('Uploading wordlist...');
-    const wordlistPath = await downloadFile('wordlist.txt', wordlistUrl);
+    const wordlistPath = await downloadFile('wordlist.txt', keywords, pathType);
     const resp = await execCmd(`corellium image create --project ${process.env.PROJECT} --instance ${instanceId} --format json wordlist.txt mast-wordlist plain ${wordlistPath}`);
     const uploadedWordlistResp = tryJsonParse(resp);
     const wordlistId = uploadedWordlistResp?.[0].id;
     core.info(`Uploaded wordlist: ${wordlistId}`);
     return wordlistId;
 }
-async function downloadInputFile() {
-    const inputsFilePath = await downloadFile('inputs.json', core.getInput('inputUrl'));
+async function downloadInputFile(pathType) {
+    const inputsFilePath = await downloadFile('inputs.json', core.getInput('userActions'), pathType);
     // estimating time it takes to execute device inputs - has 10s buffer
     const inputsJson = JSON.parse(fs_1.default.readFileSync(inputsFilePath, 'utf-8'));
     const inputsTimeout = inputsJson.reduce((acc, curr) => {
@@ -97996,7 +98002,7 @@ async function pollAssessmentForStatus(assessmentId, instanceId, expectedStatus)
         await wait();
         actualStatus = await getAssessmentStatus();
         if (actualStatus === 'failed') {
-            throw new Error('MAST automated test failed!');
+            throw new Error('MATRIX automated test failed!');
         }
     }
     return actualStatus;
@@ -98007,14 +98013,14 @@ async function storeReportInArtifacts(report) {
     const reportPath = path.join(workspaceDir, 'report.html');
     fs_1.default.writeFileSync(reportPath, report);
     const artifact = new artifact_1.DefaultArtifactClient();
-    const { id } = await artifact.uploadArtifact('mast-report', ['./report.html'], workspaceDir);
+    const { id } = await artifact.uploadArtifact('matrix-report', ['./report.html'], workspaceDir);
     if (!id) {
-        throw new Error('Failed to upload MAST report artifact!');
+        throw new Error('Failed to upload MATRIX report artifact!');
     }
     const { downloadPath } = await artifact.downloadArtifact(id);
     core.setOutput('report', downloadPath);
 }
-function validateInputsAndVars() {
+function validateInputsAndEnv() {
     if (!process.env.API_TOKEN) {
         throw new Error('Environment secret missing: API_TOKEN');
     }
@@ -98022,31 +98028,25 @@ function validateInputsAndVars() {
         throw new Error('Environment secret missing: PROJECT');
     }
     // inputs from action file are not validated https://github.com/actions/runner/issues/1070
-    const requiredInputs = ['flavor', 'os', 'appUrl', 'inputUrl'];
+    const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions'];
     requiredInputs.forEach((input) => {
         const inputResp = core.getInput(input);
         if (!inputResp || typeof inputResp !== 'string' || inputResp === '') {
             throw new Error(`Input required and not supplied: ${input}`);
         }
     });
-    const urlInputs = ['appUrl', 'inputUrl', 'wordlistUrl'];
-    urlInputs.forEach((urlInput) => {
-        const url = core.getInput(urlInput);
-        if (url) {
-            try {
-                new URL(url);
-            }
-            catch (_) {
-                throw new Error(`Provided URL is invalid: ${urlInput}`);
-            }
-        }
-    });
 }
-async function downloadFile(fileName, url) {
+async function downloadFile(fileNameToSave, pathValue, pathType) {
     const workspaceDir = process.env.GITHUB_WORKSPACE;
-    const downloadPath = path.join(workspaceDir, fileName);
-    await (0, exec_1.exec)(`curl -L -o ${downloadPath} ${url}`, [], { silent: true });
-    return downloadPath;
+    const downloadPath = path.join(workspaceDir, fileNameToSave);
+    // download file from URL, otherwise already on github workspace
+    if (pathType === PathType.URL) {
+        await (0, exec_1.exec)(`curl -L -o ${downloadPath} ${pathValue}`, [], { silent: true });
+        return downloadPath;
+    }
+    else {
+        return `${workspaceDir}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`;
+    }
 }
 async function wait(ms = 3000) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -98071,6 +98071,33 @@ async function execCmd(cmd) {
     }
     return resp;
 }
+async function getFilePathTypes() {
+    // these can be either URLs or file relative to the github workspace
+    const pathInputs = ['appPath', 'userActions', 'keywords'];
+    const workspaceDir = process.env.GITHUB_WORKSPACE;
+    const pathInputsWithTypes = {};
+    for (const pathInput of pathInputs) {
+        const filePath = core.getInput(pathInput);
+        if (filePath) {
+            try {
+                new URL(filePath);
+                pathInputsWithTypes[pathInput] = PathType.URL;
+                continue;
+            }
+            catch (_) {
+                if (!!(await fs_1.default.promises
+                    .stat(`${workspaceDir}${filePath.startsWith('/') ? filePath : `/${filePath}`}`)
+                    .catch(() => false))) {
+                    pathInputsWithTypes[pathInput] = PathType.RELATIVE;
+                    continue;
+                }
+                throw new Error(`Provided file path is invalid: ${pathInput}`);
+            }
+        }
+    }
+    return pathInputsWithTypes;
+}
+exports.getFilePathTypes = getFilePathTypes;
 function tryJsonParse(jsonStr) {
     let obj = undefined;
     if (jsonStr && typeof jsonStr === 'string' && jsonStr !== '') {
