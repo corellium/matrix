@@ -33,7 +33,7 @@ export async function run(): Promise<void> {
 
 async function installCorelliumCli(): Promise<void> {
   core.info('Installing Corellium-CLI...');
-  await exec('npm install -g @corellium/corellium-cli');
+  await exec('npm install -g @corellium/corellium-cli@1.2.7');
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
@@ -69,7 +69,7 @@ async function runMatrix(instanceId: string, pathTypes: FilePathTypes): Promise<
   core.info('Creating assessment...');
   let assessmentId: string | undefined;
   try {
-    let createAssessment = `corellium mast create-assessment --instance ${instanceId} --bundle ${bundleId}`;
+    let createAssessment = `corellium matrix create-assessment --instance ${instanceId} --bundle ${bundleId}`;
     if (wordlistId) {
       createAssessment += ` --wordlist ${wordlistId}`;
     }
@@ -82,7 +82,7 @@ async function runMatrix(instanceId: string, pathTypes: FilePathTypes): Promise<
 
   await pollAssessmentForStatus(assessmentId, instanceId, 'new');
   core.info('Starting monitor...');
-  await execCmd(`corellium mast start-monitor --instance ${instanceId} --assessment ${assessmentId}`);
+  await execCmd(`corellium matrix start-monitor --instance ${instanceId} --assessment ${assessmentId}`);
 
   await pollAssessmentForStatus(assessmentId, instanceId, 'monitoring');
   core.info('Executing inputs on device...');
@@ -91,15 +91,15 @@ async function runMatrix(instanceId: string, pathTypes: FilePathTypes): Promise<
   await wait(inputsTimeout);
 
   core.info('Stopping monitor...');
-  await execCmd(`corellium mast stop-monitor --instance ${instanceId} --assessment ${assessmentId}`);
+  await execCmd(`corellium matrix stop-monitor --instance ${instanceId} --assessment ${assessmentId}`);
 
   await pollAssessmentForStatus(assessmentId, instanceId, 'readyForTesting');
   core.info('Executing tests...');
-  await execCmd(`corellium mast test --instance ${instanceId} --assessment ${assessmentId}`);
+  await execCmd(`corellium matrix test --instance ${instanceId} --assessment ${assessmentId}`);
 
   await pollAssessmentForStatus(assessmentId, instanceId, 'complete');
   core.info('Downloading assessment...');
-  return await execCmd(`corellium mast download-report --instance ${instanceId} --assessment ${assessmentId}`);
+  return await execCmd(`corellium matrix download-report --instance ${instanceId} --assessment ${assessmentId}`);
 }
 
 async function cleanup(instanceId: string): Promise<void> {
@@ -160,7 +160,7 @@ export async function pollAssessmentForStatus(
   expectedStatus: string,
 ): Promise<string> {
   const getAssessmentStatus = async (): Promise<string> => {
-    const resp = await execCmd(`corellium mast get-assessment --instance ${instanceId} --assessment ${assessmentId}`);
+    const resp = await execCmd(`corellium matrix get-assessment --instance ${instanceId} --assessment ${assessmentId}`);
     return (tryJsonParse(resp) as { status: string })?.status;
   };
 
