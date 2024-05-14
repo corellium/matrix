@@ -97895,7 +97895,7 @@ async function run() {
 exports.run = run;
 async function installCorelliumCli() {
     core.info('Installing Corellium-CLI...');
-    await (0, exec_1.exec)('npm install -g @corellium/corellium-cli@1.2.4');
+    await (0, exec_1.exec)('npm install -g @corellium/corellium-cli');
     await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 async function setupDevice(pathTypes) {
