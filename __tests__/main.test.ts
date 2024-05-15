@@ -328,17 +328,17 @@ describe('action', () => {
       validateExecCall(execSpy.mock.calls[6][0], 'corellium image create --project');
       validateExecCall(
         execSpy.mock.calls[7][0],
-        `corellium mast create-assessment --instance ${instanceId} --bundle ${bundleId} --wordlist ${wordlistId}`,
+        `corellium matrix create-assessment --instance ${instanceId} --bundle ${bundleId} --wordlist ${wordlistId}`,
       );
-      validateExecCall(execSpy.mock.calls[8][0], `corellium mast get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[9][0], `corellium mast start-monitor --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[10][0], `corellium mast get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[8][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[9][0], `corellium matrix start-monitor --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[10][0], `corellium matrix get-assessment --instance ${instanceId}`);
       validateExecCall(execSpy.mock.calls[11][0], `corellium input ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[12][0], `corellium mast stop-monitor --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[13][0], `corellium mast get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[14][0], `corellium mast test --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[15][0], `corellium mast get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[16][0], `corellium mast download-report --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[12][0], `corellium matrix stop-monitor --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[13][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[14][0], `corellium matrix test --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[15][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[16][0], `corellium matrix download-report --instance ${instanceId}`);
       validateExecCall(execSpy.mock.calls[17][0], `corellium instance stop ${instanceId}`);
       validateExecCall(execSpy.mock.calls[18][0], `corellium instance delete ${instanceId}`);
       validateExecCall(execSpy.mock.calls[19][0], 'corellium logout');
