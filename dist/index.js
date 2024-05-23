@@ -97880,8 +97880,8 @@ async function run() {
         validateInputsAndEnv();
         const pathTypes = await getFilePathTypes();
         await installCorelliumCli();
-        const instanceId = await setupDevice(pathTypes);
-        const report = await runMatrix(instanceId, pathTypes);
+        const { instanceId, bundleId } = await setupDevice(pathTypes);
+        const report = await runMatrix(instanceId, bundleId, pathTypes);
         await cleanup(instanceId);
         await storeReportInArtifacts(report);
     }
@@ -97907,11 +97907,13 @@ async function setupDevice(pathTypes) {
     const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
     core.info(`Installing app on ${instanceId}...`);
     await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
-    return instanceId;
+    const bundleId = await getBundleId(instanceId);
+    core.info(`Opening ${bundleId} on ${instanceId}...`);
+    await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
+    return { instanceId, bundleId };
 }
-async function runMatrix(instanceId, pathTypes) {
-    const [bundleId, wordlistId, inputInfo] = await Promise.all([
-        getBundleId(instanceId),
+async function runMatrix(instanceId, bundleId, pathTypes) {
+    const [wordlistId, inputInfo] = await Promise.all([
         uploadWordlistFile(instanceId, pathTypes.keywords),
         downloadInputFile(pathTypes.userActions),
     ]);
