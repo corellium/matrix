@@ -261,6 +261,8 @@ describe('action', () => {
         .mockImplementationOnce(async () => Promise.resolve(0))
         // install app
         .mockImplementationOnce(async () => Promise.resolve(0))
+        // unlock device
+        .mockImplementationOnce(async () => Promise.resolve(0))
         // getBundleId
         .mockImplementationOnce(async (_command, _args, options: any) => {
           options.listeners.stdout(Buffer.from(JSON.stringify([{ applicationType: 'User', bundleID: bundleId }])));
@@ -326,25 +328,26 @@ describe('action', () => {
       validateExecCall(execSpy.mock.calls[2][0], 'corellium instance create');
       validateExecCall(execSpy.mock.calls[3][0], `curl -L -o ${path.join(workspaceDir, 'appFile')} ${mockUrl}`);
       validateExecCall(execSpy.mock.calls[4][0], 'corellium apps install --project');
-      validateExecCall(execSpy.mock.calls[5][0], 'corellium apps --project');
-      validateExecCall(execSpy.mock.calls[6][0], 'corellium apps open --project');
-      validateExecCall(execSpy.mock.calls[7][0], 'corellium image create --project');
+      validateExecCall(execSpy.mock.calls[5][0], 'corellium instance unlock --instance');
+      validateExecCall(execSpy.mock.calls[6][0], 'corellium apps --project');
+      validateExecCall(execSpy.mock.calls[7][0], 'corellium apps open --project');
+      validateExecCall(execSpy.mock.calls[8][0], 'corellium image create --project');
       validateExecCall(
-        execSpy.mock.calls[8][0],
+        execSpy.mock.calls[9][0],
         `corellium matrix create-assessment --instance ${instanceId} --bundle ${bundleId} --wordlist ${wordlistId}`,
       );
-      validateExecCall(execSpy.mock.calls[9][0], `corellium matrix get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[10][0], `corellium matrix start-monitor --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[11][0], `corellium matrix get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[12][0], `corellium input ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[13][0], `corellium matrix stop-monitor --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[14][0], `corellium matrix get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[15][0], `corellium matrix test --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[16][0], `corellium matrix get-assessment --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[17][0], `corellium matrix download-report --instance ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[18][0], `corellium instance stop ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[19][0], `corellium instance delete ${instanceId}`);
-      validateExecCall(execSpy.mock.calls[20][0], 'corellium logout');
+      validateExecCall(execSpy.mock.calls[10][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[11][0], `corellium matrix start-monitor --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[12][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[13][0], `corellium input ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[14][0], `corellium matrix stop-monitor --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[15][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[16][0], `corellium matrix test --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[17][0], `corellium matrix get-assessment --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[18][0], `corellium matrix download-report --instance ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[19][0], `corellium instance stop ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[20][0], `corellium instance delete ${instanceId}`);
+      validateExecCall(execSpy.mock.calls[21][0], 'corellium logout');
 
       unlinkSync(path.join(__dirname, './report.html'));
     }, 15000);
