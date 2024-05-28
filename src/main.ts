@@ -33,7 +33,7 @@ export async function run(): Promise<void> {
 
 async function installCorelliumCli(): Promise<void> {
   core.info('Installing Corellium-CLI...');
-  await exec('npm install -g @corellium/corellium-cli@1.3.0');
+  await exec('npm install -g @corellium/corellium-cli@1.3.1');
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
@@ -52,8 +52,12 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   core.info(`Installing app on ${instanceId}...`);
   await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
 
-  core.info('Unlocking device...');
-  await execCmd(`corellium instance unlock --instance ${instanceId}`);
+  const instanceStr = await execCmd(`corellium instance get --instance ${instanceId}`);
+  const instance = tryJsonParse(instanceStr) as unknown as { type: string }
+  if (instance?.type === 'ios') {
+    core.info('Unlocking device...');
+    await execCmd(`corellium instance unlock --instance ${instanceId}`);
+  }
 
   const bundleId = await getBundleId(instanceId);
 
