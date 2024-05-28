@@ -53,7 +53,7 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
 
   const instanceStr = await execCmd(`corellium instance get --instance ${instanceId}`);
-  const instance = tryJsonParse(instanceStr) as unknown as { type: string }
+  const instance = tryJsonParse(instanceStr) as unknown as { type: string };
   if (instance?.type === 'ios') {
     core.info('Unlocking device...');
     await execCmd(`corellium instance unlock --instance ${instanceId}`);
