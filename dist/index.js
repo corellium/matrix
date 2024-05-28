@@ -97882,7 +97882,7 @@ async function run() {
         await installCorelliumCli();
         const { instanceId, bundleId } = await setupDevice(pathTypes);
         const report = await runMatrix(instanceId, bundleId, pathTypes);
-        await cleanup(instanceId);
+        // await cleanup(instanceId);
         await storeReportInArtifacts(report);
     }
     catch (error) {
@@ -97901,19 +97901,23 @@ async function installCorelliumCli() {
 async function setupDevice(pathTypes) {
     const projectId = process.env.PROJECT;
     core.info('Creating device...');
-    const resp = await execCmd(`corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`);
-    const instanceId = resp?.toString().trim();
+    // const resp = await execCmd(
+    //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+    // );
+    // const instanceId = resp?.toString().trim();
+    const instanceId = '1e899984-fbb9-4034-b32b-38e202535d29';
     core.info('Downloading app...');
     const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
     core.info(`Installing app on ${instanceId}...`);
-    await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
+    // await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
     const instanceStr = await execCmd(`corellium instance get --instance ${instanceId}`);
     const instance = tryJsonParse(instanceStr);
     if (instance?.type === 'ios') {
         core.info('Unlocking device...');
         await execCmd(`corellium instance unlock --instance ${instanceId}`);
     }
-    const bundleId = await getBundleId(instanceId);
+    // const bundleId = await getBundleId(instanceId);
+    const bundleId = 'com.apple.MobileAddressBook';
     core.info(`Opening ${bundleId} on ${instanceId}...`);
     await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
     return { instanceId, bundleId };
