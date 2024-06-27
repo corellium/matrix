@@ -97882,7 +97882,7 @@ async function run() {
         await installCorelliumCli();
         const { instanceId, bundleId } = await setupDevice(pathTypes);
         const report = await runMatrix(instanceId, bundleId, pathTypes);
-        await cleanup(instanceId);
+        // await cleanup(instanceId);
         await storeReportInArtifacts(report, bundleId);
     }
     catch (error) {
@@ -97905,7 +97905,7 @@ async function setupDevice(pathTypes) {
     //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
     // );
     // const instanceId = resp?.toString().trim();
-    const instanceId = '232f3d6c-2245-45d2-949d-e0842598f733';
+    const instanceId = 'a6b0f8f3-4da1-4338-842a-6c9f134b3dd9';
     core.info('Downloading app...');
     const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
     core.info(`Installing app on ${instanceId}...`);
