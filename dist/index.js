@@ -97901,8 +97901,11 @@ async function installCorelliumCli() {
 async function setupDevice(pathTypes) {
     const projectId = process.env.PROJECT;
     core.info('Creating device...');
-    const resp = await execCmd(`corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`);
-    const instanceId = resp?.toString().trim();
+    // const resp = await execCmd(
+    //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+    // );
+    // const instanceId = resp?.toString().trim();
+    const instanceId = '232f3d6c-2245-45d2-949d-e0842598f733';
     core.info('Downloading app...');
     const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
     core.info(`Installing app on ${instanceId}...`);
