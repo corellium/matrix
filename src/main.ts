@@ -45,7 +45,7 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
   // );
   // const instanceId = resp?.toString().trim();
-  const instanceId = '05907d51-ca7c-4966-800d-31c5fe2ccd96';
+  const instanceId = 'a6b0f8f3-4da1-4338-842a-6c9f134b3dd9';
 
   core.info('Downloading app...');
   const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
