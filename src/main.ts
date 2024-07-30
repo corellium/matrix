@@ -39,16 +39,19 @@ async function installCorelliumCli(): Promise<void> {
 
 async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: string; bundleId: string }> {
   const projectId = process.env.PROJECT;
+  let instanceId = core.getInput('instanceId'); // Assuming 'instanceId' is an input; if not, adjust accordingly.
 
-  core.info('Creating device...');
-  const resp = await execCmd(
-    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-  );
-  const instanceId = resp?.toString().trim();
+  if (!instanceId) {
+    core.info('Creating device...');
+    const resp = await execCmd(
+      `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+    );
+    instanceId = resp?.toString().trim();
+  } else {
+    core.info(`Using existing device with ID: ${instanceId}`);
+  }
 
-  core.info('Downloading app...');
   const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
-
   core.info(`Installing app on ${instanceId}...`);
   await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
 
@@ -60,7 +63,6 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   }
 
   const bundleId = await getBundleId(instanceId);
-
   core.info(`Opening ${bundleId} on ${instanceId}...`);
   await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
 
