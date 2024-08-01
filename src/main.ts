@@ -20,33 +20,36 @@ export async function run(): Promise<void> {
     const pathTypes = await getFilePathTypes();
     await installCorelliumCli();
     
-    const instanceId = core.getInput('instanceId');
+    let instanceId = core.getInput('instanceId').trim(); // Ensure we trim the input
     const reportFormat = core.getInput('reportFormat') || 'html';
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
 
-    core.info(`Received instanceId: ${instanceId}`);
+    // Log the trimmed instanceId
+    core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
     core.info(`Received reportFormat: ${reportFormat}`);
 
-    if (instanceId && instanceId.trim() !== '') {
-      finalInstanceId = instanceId.trim();
+    if (instanceId) {
+      finalInstanceId = instanceId;
     } else {
-      ({ instanceId: finalInstanceId } = await setupDevice());
+      const setupResult = await setupDevice();
+      finalInstanceId = setupResult.instanceId;
       isNewInstance = true;
+      core.info(`New device created with instanceId: ${finalInstanceId}`);
     }
 
     bundleId = await setupApp(finalInstanceId, pathTypes);
-    
     const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
     
     if (isNewInstance) {
+      core.info(`Cleaning up new instance: ${finalInstanceId}`);
       await cleanup(finalInstanceId);
     }
     
     await storeReportInArtifacts(report, bundleId, reportFormat);
   } catch (error) {
-    // Fail the workflow run if an error occurs
+    core.error(`Error in run: ${error.message}`);
     if (error instanceof Error) {
       core.setFailed(error.message);
     }
