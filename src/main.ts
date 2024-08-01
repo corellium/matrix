@@ -21,13 +21,16 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
     
     const instanceId = core.getInput('instanceId');
-    const reportFormat = core.getInput('reportFormat');
+    const reportFormat = core.getInput('reportFormat') || 'html';
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
 
-    if (instanceId != null) {
-      finalInstanceId = instanceId;
+    core.info(`Received instanceId: ${instanceId}`);
+    core.info(`Received reportFormat: ${reportFormat}`);
+
+    if (instanceId && instanceId.trim() !== '') {
+      finalInstanceId = instanceId.trim();
     } else {
       ({ instanceId: finalInstanceId } = await setupDevice());
       isNewInstance = true;
