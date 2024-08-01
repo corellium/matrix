@@ -26,7 +26,7 @@ export async function run(): Promise<void> {
     let bundleId: string;
     let isNewInstance = false;
 
-    if (instanceId) {
+    if (instanceId != null) {
       finalInstanceId = instanceId;
     } else {
       ({ instanceId: finalInstanceId } = await setupDevice());
