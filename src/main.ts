@@ -19,9 +19,12 @@ export async function run(): Promise<void> {
     validateInputsAndEnv();
     const pathTypes = await getFilePathTypes();
     await installCorelliumCli();
-    const { instanceId, bundleId } = await setupDevice(pathTypes);
-    const report = await runMatrix(instanceId, bundleId, pathTypes);
-    await cleanup(instanceId);
+    const instanceId = core.getInput('instanceId');
+    const { instanceId: finalInstanceId, bundleId } = instanceId
+      ? { instanceId, bundleId: await getBundleId(instanceId) }
+      : await setupDevice(pathTypes);
+    const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
+    await cleanup(finalInstanceId);
     await storeReportInArtifacts(report, bundleId);
   } catch (error) {
     // Fail the workflow run if an error occurs
@@ -39,19 +42,16 @@ async function installCorelliumCli(): Promise<void> {
 
 async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: string; bundleId: string }> {
   const projectId = process.env.PROJECT;
-  let instanceId = core.getInput('instanceId'); // Assuming 'instanceId' is an input; if not, adjust accordingly.
 
-  if (!instanceId) {
-    core.info('Creating device...');
-    const resp = await execCmd(
-      `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-    );
-    instanceId = resp?.toString().trim();
-  } else {
-    core.info(`Using existing device with ID: ${instanceId}`);
-  }
+  core.info('Creating device...');
+  const resp = await execCmd(
+    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+  );
+  const instanceId = resp?.toString().trim();
 
+  core.info('Downloading app...');
   const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
+
   core.info(`Installing app on ${instanceId}...`);
   await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
 
@@ -63,6 +63,7 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   }
 
   const bundleId = await getBundleId(instanceId);
+
   core.info(`Opening ${bundleId} on ${instanceId}...`);
   await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
 
@@ -191,13 +192,14 @@ export async function pollAssessmentForStatus(
 
 async function storeReportInArtifacts(report: string, bundleId: string): Promise<void> {
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
-  const reportPath = path.join(workspaceDir, 'report.html');
+  const reportFormat = core.getInput('reportFormat') || 'html';
+  const reportPath = path.join(workspaceDir, `report.${reportFormat}`);
   fs.writeFileSync(reportPath, report);
   const flavor = core.getInput('deviceFlavor');
 
   const artifact = new DefaultArtifactClient();
 
-  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, ['./report.html'], workspaceDir);
+  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, [reportPath], workspaceDir);
   if (!id) {
     throw new Error('Failed to upload MATRIX report artifact!');
   }
