@@ -25,6 +25,12 @@ inputs:
   keywords:
     description: 'URL to download wordlist txt file or local path of the txt file relative to the Github workspace'
     required: false
+  instanceId:
+    description: 'Existing Corellium instance ID to use'
+    required: false
+  reportFormat:
+    description: 'Format of the report ("html" or "json")'
+    required: true
 
 outputs:
   report:
