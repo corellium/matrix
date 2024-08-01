@@ -21,12 +21,25 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
     
     const instanceId = core.getInput('instanceId');
-    const { instanceId: finalInstanceId, bundleId } = instanceId
-      ? { instanceId, bundleId: await getBundleId(instanceId) }
-      : await setupDevice(pathTypes);
+    let finalInstanceId: string;
+    let bundleId: string;
+    let isNewInstance = false;
+
+    if (instanceId) {
+      finalInstanceId = instanceId;
+    } else {
+      ({ instanceId: finalInstanceId } = await setupDevice());
+      isNewInstance = true;
+    }
+
+    bundleId = await setupApp(finalInstanceId, pathTypes);
     
     const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
-    await cleanup(finalInstanceId);
+    
+    if (isNewInstance) {
+      await cleanup(finalInstanceId);
+    }
+    
     await storeReportInArtifacts(report, bundleId);
   } catch (error) {
     // Fail the workflow run if an error occurs
@@ -42,7 +55,7 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: string; bundleId: string }> {
+async function setupDevice(): Promise<{ instanceId: string }> {
   const projectId = process.env.PROJECT;
 
   core.info('Creating device...');
@@ -50,6 +63,11 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
     `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
   );
   const instanceId = resp?.toString().trim();
+  return { instanceId };
+}
+
+async function setupApp(instanceId: string, pathTypes: FilePathTypes): Promise<string> {
+  const projectId = process.env.PROJECT;
 
   core.info('Downloading app...');
   const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
@@ -69,7 +87,7 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   core.info(`Opening ${bundleId} on ${instanceId}...`);
   await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
 
-  return { instanceId, bundleId };
+  return bundleId;
 }
 
 async function runMatrix(instanceId: string, bundleId: string, pathTypes: FilePathTypes): Promise<string> {
@@ -194,14 +212,13 @@ export async function pollAssessmentForStatus(
 
 async function storeReportInArtifacts(report: string, bundleId: string): Promise<void> {
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
-  const reportFormat = core.getInput('reportFormat') || 'html';
-  const reportPath = path.join(workspaceDir, `report.${reportFormat}`);
+  const reportPath = path.join(workspaceDir, 'report.html');
   fs.writeFileSync(reportPath, report);
   const flavor = core.getInput('deviceFlavor');
 
   const artifact = new DefaultArtifactClient();
 
-  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, [reportPath], workspaceDir);
+  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, ['./report.html'], workspaceDir);
   if (!id) {
     throw new Error('Failed to upload MATRIX report artifact!');
   }
