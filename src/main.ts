@@ -19,10 +19,12 @@ export async function run(): Promise<void> {
     validateInputsAndEnv();
     const pathTypes = await getFilePathTypes();
     await installCorelliumCli();
+    
     const instanceId = core.getInput('instanceId');
     const { instanceId: finalInstanceId, bundleId } = instanceId
       ? { instanceId, bundleId: await getBundleId(instanceId) }
       : await setupDevice(pathTypes);
+    
     const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
     await cleanup(finalInstanceId);
     await storeReportInArtifacts(report, bundleId);
