@@ -21,7 +21,7 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
     
     let instanceId = core.getInput('instanceId').trim(); // Ensure we trim the input
-    const reportFormat = core.getInput('reportFormat') || 'html';
+    const reportFormat = core.getInput('reportFormat');
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
