@@ -30,15 +30,6 @@ export async function run(): Promise<void> {
     core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
     core.info(`Received reportFormat: ${reportFormat}`);
 
-    if (instanceId) {
-      finalInstanceId = instanceId;
-    } else {
-      const setupResult = await setupDevice();
-      finalInstanceId = setupResult.instanceId;
-      isNewInstance = true;
-      core.info(`New device created with instanceId: ${finalInstanceId}`);
-    }
-
     bundleId = await setupApp(finalInstanceId, pathTypes);
     const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
     
