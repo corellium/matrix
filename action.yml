@@ -12,10 +12,10 @@ inputs:
     default: 'https://app.corellium.com'
   deviceFlavor:
     description: 'The flavor of the Instance that is being created'
-    required: true
+    required: false
   deviceOS:
     description: 'The software version'
-    required: true
+    required: false
   appPath:
     description: 'URL to download test app or local path of the app relative to the Github workspace'
     required: true
