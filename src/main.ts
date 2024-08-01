@@ -21,6 +21,7 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
     
     const instanceId = core.getInput('instanceId');
+    const reportFormat = core.getInput('reportFormat') || 'html';
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
@@ -40,7 +41,7 @@ export async function run(): Promise<void> {
       await cleanup(finalInstanceId);
     }
     
-    await storeReportInArtifacts(report, bundleId);
+    await storeReportInArtifacts(report, bundleId, reportFormat);
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) {
@@ -210,15 +211,15 @@ export async function pollAssessmentForStatus(
   return actualStatus;
 }
 
-async function storeReportInArtifacts(report: string, bundleId: string): Promise<void> {
+async function storeReportInArtifacts(report: string, bundleId: string, reportFormat: string): Promise<void> {
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
-  const reportPath = path.join(workspaceDir, 'report.html');
+  const reportPath = path.join(workspaceDir, `report.${reportFormat}`);
   fs.writeFileSync(reportPath, report);
   const flavor = core.getInput('deviceFlavor');
 
   const artifact = new DefaultArtifactClient();
 
-  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, ['./report.html'], workspaceDir);
+  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, [reportPath], workspaceDir);
   if (!id) {
     throw new Error('Failed to upload MATRIX report artifact!');
   }
@@ -237,7 +238,7 @@ function validateInputsAndEnv(): void {
   }
 
   // inputs from action file are not validated https://github.com/actions/runner/issues/1070
-  const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions'];
+  const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions', 'reportFormat'];
   requiredInputs.forEach((input: string) => {
     const inputResp = core.getInput(input);
     if (!inputResp || typeof inputResp !== 'string' || inputResp === '') {
