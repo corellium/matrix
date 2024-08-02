@@ -23,14 +23,14 @@ export async function run(): Promise<void> {
     let instanceId = core.getInput('instanceId');
 
     if (!instanceId) {
-      const setupDeviceResult = await setupDevice(pathTypes);
+      const setupDeviceResult = await setupDevice(pathTypes, instanceId);
       instanceId = setupDeviceResult.instanceIdOut;
     }
 
     const result = await setupApp(pathTypes, instanceId);
     const report = await runMatrix(instanceId, result.bundleId, pathTypes);
     
-    if(!instanceId) {
+    if (!core.getInput('instanceId')) {
       await cleanup(instanceId);
     }
 
@@ -53,7 +53,7 @@ async function installCorelliumCli(): Promise<void> {
 async function setupDevice(pathTypes: FilePathTypes, instanceId: string): Promise<{ instanceIdOut: string }> {
   const projectId = process.env.PROJECT;
 
-  core.info(` ${instanceId}...`);
+  core.info(`Checking instanceId: ${instanceId}`);
 
   if (!instanceId) {
     core.info('Creating device...');
@@ -141,14 +141,13 @@ async function runMatrix(instanceId: string, bundleId: string, pathTypes: FilePa
 }
 
 async function cleanup(instanceIdOut: string): Promise<void> {
+  core.info('Cleaning up...');
 
-  if(!instanceIdOut){
-    core.info('Cleaning up...');
+  if (instanceIdOut) {
     await execCmd(`corellium instance stop ${instanceIdOut}`);
     await execCmd(`corellium instance delete ${instanceIdOut}`);
     await execCmd(`corellium logout`);
   }
-
 }
 
 async function getBundleId(instanceId: string): Promise<string> {
@@ -337,3 +336,7 @@ function tryJsonParse(jsonStr: string): Record<string, unknown> | undefined {
 
   return obj;
 }
+
+(async () => {
+  await run();
+})();
