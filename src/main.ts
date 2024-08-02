@@ -19,39 +19,24 @@ export async function run(): Promise<void> {
     validateInputsAndEnv();
     const pathTypes = await getFilePathTypes();
     await installCorelliumCli();
-    
-    let instanceId = core.getInput('instanceId').trim(); // Ensure we trim the input
-    const reportFormat = core.getInput('reportFormat');
-    let finalInstanceId: string;
-    let bundleId: string;
-    let isNewInstance = false;
 
-    // Log the trimmed instanceId
-    core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
-    core.info(`Received reportFormat: ${reportFormat}`);
-
-    // Check if instanceId is provided and not empty
-    if (instanceId && instanceId.length > 0) {
-      finalInstanceId = instanceId;
-      core.info(`Using existing instance with instanceId: ${finalInstanceId}`);
-    } else {
-      const setupResult = await setupDevice();
-      finalInstanceId = setupResult.instanceId;
-      isNewInstance = true;
-      core.info(`New device created with instanceId: ${finalInstanceId}`);
+    let instanceId = core.getInput('instanceId');
+    if (!instanceId) {
+      const setupDeviceResult = await setupDevice(pathTypes);
+      instanceId = setupDeviceResult.instanceId;
     }
 
-    bundleId = await setupApp(finalInstanceId, pathTypes);
-    const report = await runMatrix(finalInstanceId, bundleId, pathTypes);
+    const result = await setupApp(pathTypes, instanceId);
+    const report = await runMatrix(instanceId, result.bundleId, pathTypes);
     
-    if (isNewInstance) {
-      core.info(`Cleaning up new instance: ${finalInstanceId}`);
-      await cleanup(finalInstanceId);
+    if(!instanceId) {
+      await cleanup(instanceId);
     }
+
+    await storeReportInArtifacts(report, result.bundleId);
     
-    await storeReportInArtifacts(report, bundleId, reportFormat);
   } catch (error) {
-    core.error(`Error in run: ${error.message}`);
+    // Fail the workflow run if an error occurs
     if (error instanceof Error) {
       core.setFailed(error.message);
     }
@@ -64,7 +49,19 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupApp(instanceId: string, pathTypes: FilePathTypes): Promise<string> {
+async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: string }> {
+  const projectId = process.env.PROJECT;
+
+  core.info('Creating device...');
+  const resp = await execCmd(
+    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+  );
+  const instanceId = resp?.toString().trim();
+
+  return { instanceId };
+}
+
+async function setupApp(pathTypes: FilePathTypes, instanceId: string): Promise<{ instanceId: string; bundleId: string }> {
   const projectId = process.env.PROJECT;
 
   core.info('Downloading app...');
@@ -85,18 +82,7 @@ async function setupApp(instanceId: string, pathTypes: FilePathTypes): Promise<s
   core.info(`Opening ${bundleId} on ${instanceId}...`);
   await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
 
-  return bundleId;
-}
-
-async function setupDevice(): Promise<{ instanceId: string }> {
-  const projectId = process.env.PROJECT;
-
-  core.info('Creating device...');
-  const resp = await execCmd(
-    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-  );
-  const instanceId = resp?.toString().trim();
-  return { instanceId };
+  return { instanceId, bundleId };
 }
 
 async function runMatrix(instanceId: string, bundleId: string, pathTypes: FilePathTypes): Promise<string> {
@@ -219,15 +205,15 @@ export async function pollAssessmentForStatus(
   return actualStatus;
 }
 
-async function storeReportInArtifacts(report: string, bundleId: string, reportFormat: string): Promise<void> {
+async function storeReportInArtifacts(report: string, bundleId: string): Promise<void> {
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
-  const reportPath = path.join(workspaceDir, `report.${reportFormat}`);
+  const reportPath = path.join(workspaceDir, 'report.html');
   fs.writeFileSync(reportPath, report);
   const flavor = core.getInput('deviceFlavor');
 
   const artifact = new DefaultArtifactClient();
 
-  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, [reportPath], workspaceDir);
+  const { id } = await artifact.uploadArtifact(`matrix-report-${flavor}-${bundleId}`, ['./report.html'], workspaceDir);
   if (!id) {
     throw new Error('Failed to upload MATRIX report artifact!');
   }
@@ -246,7 +232,7 @@ function validateInputsAndEnv(): void {
   }
 
   // inputs from action file are not validated https://github.com/actions/runner/issues/1070
-  const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions', 'reportFormat'];
+  const requiredInputs = ['deviceFlavor', 'deviceOS', 'appPath', 'userActions'];
   requiredInputs.forEach((input: string) => {
     const inputResp = core.getInput(input);
     if (!inputResp || typeof inputResp !== 'string' || inputResp === '') {
