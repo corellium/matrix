@@ -25,7 +25,7 @@ export async function run(): Promise<void> {
 
     if (!core.getInput('instanceId')) {
       const setupDeviceResult = await setupDevice(pathTypes, instanceId);
-      instanceId = setupDeviceResult.instanceIdOut;
+      instanceId = setupDeviceResult.instanceId;
     }
 
     const result = await setupApp(pathTypes, instanceId);
@@ -46,6 +46,7 @@ export async function run(): Promise<void> {
 }
 
 async function installCorelliumCli(): Promise<void> {
+  core.info(`Passed instanceId: ${core.getInput('instanceId')}`);
   core.info('Installing Corellium-CLI...');
   await exec('npm install -g @corellium/corellium-cli@1.3.2');
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
@@ -295,7 +296,7 @@ async function execCmd(cmd: string): Promise<string> {
 
 export async function getFilePathTypes(): Promise<FilePathTypes> {
   // these can be either URLs or file relative to the github workspace
-  const pathInputs = ['appPath', 'userActions', 'keywords'];
+  const pathInputs = ['appPath', 'userActions', 'keywords', 'instanceId'];
 
   const workspaceDir = process.env.GITHUB_WORKSPACE as string;
 
