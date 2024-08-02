@@ -21,22 +21,18 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
     
     let instanceId = core.getInput('instanceId').trim(); // Ensure we trim the input
-    const reportFormat = core.getInput('reportFormat') || 'html';
+    const reportFormat = core.getInput('reportFormat');
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
-
-    // Log the trimmed instanceId
-    core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
-    core.info(`Received reportFormat: ${reportFormat}`);
-
-    if (instanceId) {
+    
+    if (!instanceId) {
+      const instanceData = await setupDevice();
+      instanceId = instanceData.instanceId;
       finalInstanceId = instanceId;
-    } else {
-      const setupResult = await setupDevice();
-      finalInstanceId = setupResult.instanceId;
       isNewInstance = true;
-      core.info(`New device created with instanceId: ${finalInstanceId}`);
+    } else {
+      finalInstanceId = instanceId;
     }
 
     bundleId = await setupApp(finalInstanceId, pathTypes);
@@ -62,17 +58,6 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupDevice(): Promise<{ instanceId: string }> {
-  const projectId = process.env.PROJECT;
-
-  core.info('Creating device...');
-  const resp = await execCmd(
-    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-  );
-  const instanceId = resp?.toString().trim();
-  return { instanceId };
-}
-
 async function setupApp(instanceId: string, pathTypes: FilePathTypes): Promise<string> {
   const projectId = process.env.PROJECT;
 
@@ -95,6 +80,17 @@ async function setupApp(instanceId: string, pathTypes: FilePathTypes): Promise<s
   await execCmd(`corellium apps open --project ${projectId} --instance ${instanceId} --bundle ${bundleId}`);
 
   return bundleId;
+}
+
+async function setupDevice(): Promise<{ instanceId: string }> {
+  const projectId = process.env.PROJECT;
+
+  core.info('Creating device...');
+  const resp = await execCmd(
+    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+  );
+  const instanceId = resp?.toString().trim();
+  return { instanceId };
 }
 
 async function runMatrix(instanceId: string, bundleId: string, pathTypes: FilePathTypes): Promise<string> {
