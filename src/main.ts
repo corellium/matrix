@@ -30,8 +30,10 @@ export async function run(): Promise<void> {
     core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
     core.info(`Received reportFormat: ${reportFormat}`);
 
-    if (instanceId) {
+    // Check if instanceId is provided and not empty
+    if (instanceId && instanceId.length > 0) {
       finalInstanceId = instanceId;
+      core.info(`Using existing instance with instanceId: ${finalInstanceId}`);
     } else {
       const setupResult = await setupDevice();
       finalInstanceId = setupResult.instanceId;
