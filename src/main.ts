@@ -21,6 +21,7 @@ export async function run(): Promise<void> {
     await installCorelliumCli();
 
     let instanceId = core.getInput('instanceId');
+    core.info(`Instance ID input: ${instanceId}`);
 
     if (!instanceId) {
       const setupDeviceResult = await setupDevice(pathTypes, instanceId);
@@ -50,10 +51,10 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupDevice(pathTypes: FilePathTypes, instanceId: string): Promise<{ instanceIdOut: string }> {
+async function setupDevice(pathTypes: FilePathTypes, instanceId: string | undefined): Promise<{ instanceIdOut: string }> {
   const projectId = process.env.PROJECT;
 
-  core.info(`Checking instanceId: ${instanceId}`);
+  core.info(`Instance ID in setupDevice: ${instanceId}`);
 
   if (!instanceId) {
     core.info('Creating device...');
