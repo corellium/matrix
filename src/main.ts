@@ -25,14 +25,18 @@ export async function run(): Promise<void> {
     let finalInstanceId: string;
     let bundleId: string;
     let isNewInstance = false;
-    
-    if (!instanceId) {
-      const instanceData = await setupDevice();
-      instanceId = instanceData.instanceId;
+
+    // Log the trimmed instanceId
+    core.info(`Received trimmed instanceId: '${instanceId}'`); // Use single quotes to detect empty spaces
+    core.info(`Received reportFormat: ${reportFormat}`);
+
+    if (instanceId) {
       finalInstanceId = instanceId;
-      isNewInstance = true;
     } else {
-      finalInstanceId = instanceId;
+      const setupResult = await setupDevice();
+      finalInstanceId = setupResult.instanceId;
+      isNewInstance = true;
+      core.info(`New device created with instanceId: ${finalInstanceId}`);
     }
 
     bundleId = await setupApp(finalInstanceId, pathTypes);
