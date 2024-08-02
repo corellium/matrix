@@ -97894,13 +97894,13 @@ async function run() {
 }
 exports.run = run;
 async function installCorelliumCli() {
-    core.info('Installing Corellium-CLI...');
+    core.info('fuck Installing Corellium-CLI...');
     await (0, exec_1.exec)('npm install -g @corellium/corellium-cli@1.3.2');
     await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 async function setupDevice(pathTypes) {
     const projectId = process.env.PROJECT;
-    core.info('Creating device...');
+    core.info('shit Creating device...');
     const resp = await execCmd(`corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`);
     const instanceId = resp?.toString().trim();
     core.info('Downloading app...');
