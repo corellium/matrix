@@ -23,7 +23,7 @@ export async function run(): Promise<void> {
     let instanceId = core.getInput('instanceId');
     core.info(`Instance ID input: ${instanceId}`);
 
-    if (!instanceId) {
+    if (!core.getInput('instanceId')) {
       const setupDeviceResult = await setupDevice(pathTypes, instanceId);
       instanceId = setupDeviceResult.instanceIdOut;
     }
@@ -51,24 +51,24 @@ async function installCorelliumCli(): Promise<void> {
   await execCmd(`corellium login --endpoint ${core.getInput('server')} --apitoken ${process.env.API_TOKEN}`);
 }
 
-async function setupDevice(pathTypes: FilePathTypes, instanceId: string | undefined): Promise<{ instanceIdOut: string }> {
+async function setupDevice(pathTypes: FilePathTypes, instanceId: string): Promise<{ instanceId: string }> {
   const projectId = process.env.PROJECT;
 
   core.info(`Instance ID in setupDevice: ${instanceId}`);
 
-  if (!instanceId) {
+  if (!core.getInput('instanceId')) {
     core.info('Creating device...');
     
     const resp = await execCmd(
       `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
     );
     
-    const instanceIdOut = resp?.toString().trim();
-    
-    return { instanceIdOut };
-  } else {
-    return { instanceIdOut: instanceId };
+    const instanceId = resp?.toString().trim();
+
+    return { instanceId };
   }
+   
+ return { instanceId }
 }
 
 async function setupApp(pathTypes: FilePathTypes, instanceId: string): Promise<{ instanceId: string; bundleId: string }> {
