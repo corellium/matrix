@@ -46,6 +46,8 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   );
   const instanceId = resp?.toString().trim();
 
+  core.info(`Instance ID: ${instanceId}`);
+  
   core.info('Downloading app...');
   const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
 
