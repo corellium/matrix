@@ -41,9 +41,9 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   const projectId = process.env.PROJECT;
 
   core.info('Creating device...');
-  const resp = await execCmd(
-    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-  );
+  // const resp = await execCmd(
+  //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+  // );
   // const instanceId = resp?.toString().trim();
   const instanceId = '32fdcfca-59e8-4712-94ba-da4b0ceaef1d';
 
