@@ -41,17 +41,16 @@ async function setupDevice(pathTypes: FilePathTypes): Promise<{ instanceId: stri
   const projectId = process.env.PROJECT;
 
   core.info('Creating device...');
-  // const resp = await execCmd(
-  //   `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
-  // );
-  // const instanceId = resp?.toString().trim();
-  const instanceId = 'e2c0251f-6476-4c68-9d7b-0b6f52b6b494';
+  const resp = await execCmd(
+    `corellium instance create ${core.getInput('deviceFlavor')} ${core.getInput('deviceOS')} ${projectId} --wait`,
+  );
+  const instanceId = resp?.toString().trim();
 
-  // core.info('Downloading app...');
-  // const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
+  core.info('Downloading app...');
+  const appPath = await downloadFile('appFile', core.getInput('appPath'), pathTypes.appPath);
 
-  // core.info(`Installing app on ${instanceId}...`);
-  // await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
+  core.info(`Installing app on ${instanceId}...`);
+  await execCmd(`corellium apps install --project ${projectId} --instance ${instanceId} --app ${appPath}`);
 
   const instanceStr = await execCmd(`corellium instance get --instance ${instanceId}`);
   const instance = tryJsonParse(instanceStr) as unknown as { type: string };
